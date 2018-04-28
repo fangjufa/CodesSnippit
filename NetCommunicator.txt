@@ -1,0 +1,355 @@
+
+using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using ProtoBuf;
+using System;
+using System.Text;
+
+namespace Net
+{
+    public class NetCommunicator
+    {
+        //发布端口
+        public static string baseUrl = GlobalData.configUrl + "/u3dapi/";//从config里面读取地址
+        //调试端口
+        //public static string baseUrl = "http://10.1.32.26:14064/u3dapi/";
+
+        /// <summary>
+        /// 登录
+        /// </summary>
+        /// <param name="accountNo">用户名</param>
+        /// <param name="password">密码</param>
+        /// <param name="callback">回调</param>
+        public static void Login(string accountNo, string password, Action<ReturnDto<UserDto>> callback)
+        {
+            var md5 = new System.Security.Cryptography.MD5CryptoServiceProvider();
+            string pwdMd5 = BitConverter.ToString(md5.ComputeHash(UnicodeEncoding.UTF8.GetBytes(password.Trim())));
+            LoginDto loginInfo = new LoginDto();
+            loginInfo.AccountNo = accountNo;
+            loginInfo.Password = pwdMd5;
+            byte[] data = ProtobufSerializer.Serialize(loginInfo);
+            HttpManager.POST(baseUrl + "login/", data, www =>
+            {
+                ReturnDto<UserDto> returnDto = ProtobufSerializer.Deserialize<ReturnDto<UserDto>>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+        /// <summary>
+        /// 更新密码
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="accountNo">账号ID</param>
+        /// <param name="oldPwd">旧密码</param>
+        /// <param name="newPwd">新密码</param>
+        /// <param name="callback"></param>
+        public static void UpdatePwd(int userId, int accountId, string oldPwd, string newPwd, Action<ReturnDto> callback)
+        {
+            var md5 = new System.Security.Cryptography.MD5CryptoServiceProvider();
+            string oldPwdMd5 = BitConverter.ToString(md5.ComputeHash(UnicodeEncoding.UTF8.GetBytes(oldPwd.Trim())));
+            string newPwdMd5 = BitConverter.ToString(md5.ComputeHash(UnicodeEncoding.UTF8.GetBytes(newPwd.Trim())));
+            UpdatePwdDto updateDto = new UpdatePwdDto();
+            updateDto.UserId = userId;
+            updateDto.AccountId = accountId;
+            updateDto.OldPwd = oldPwdMd5;
+            updateDto.NewPwd = newPwdMd5;
+            byte[] data = ProtobufSerializer.Serialize(updateDto);
+            HttpManager.POST(baseUrl + "UpdatePwd/", data, www =>
+            {
+                ReturnDto returnDto = ProtobufSerializer.Deserialize<ReturnDto>(www.bytes);
+                if (callback != null)  callback(returnDto);
+            });
+        }
+
+
+        /// <summary>
+        /// 修改头像
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="customHead">修改的头像</param>
+        /// <param name="callback"></param>
+        public static void UpdateHead(int userId, Texture2D head, Action<ReturnDto> callback)
+        {
+            UpdateHeadDto dto = new UpdateHeadDto();
+            dto.UserId = userId;
+            dto.Head = head.EncodeToPNG();
+            byte[] data = ProtobufSerializer.Serialize(dto);
+            HttpManager.POST(baseUrl + "UpdateHead/", data, www =>
+            {
+                ReturnDto returnDto = ProtobufSerializer.Deserialize<ReturnDto>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+
+        /// <summary>
+        /// 获取实训练习列表
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="callback"></param>
+        public static void GetPracticeList(int userId, Action<ReturnDto<List<PracticeDto>>> callback)
+        {
+            HttpManager.GET(baseUrl + "PracticeList/" + userId, www =>
+            {
+                ReturnDto<List<PracticeDto>> returnDto = ProtobufSerializer.Deserialize<ReturnDto<List<PracticeDto>>>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+        /// <summary>
+        /// 获取业务步骤信息
+        /// </summary>
+        /// <param name="bsnId">业务ID</param>
+        /// <param name="bsnId">用户ID</param>
+        /// <param name="callback"></param>
+        public static void GetBusinessStep(int bsnId, int userId, Action<ReturnDto<PracticeBsnDto>> callback)
+        {
+            HttpManager.GET(baseUrl + "BsnStep/" + bsnId + "/" + userId, www =>
+            {
+                ReturnDto<PracticeBsnDto> returnDto = ProtobufSerializer.Deserialize<ReturnDto<PracticeBsnDto>>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+
+        /// <summary>
+        /// 完成练习
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="practiceId">练习ID</param>
+        /// <param name="callback"></param>
+        public static void FinishPractice(int userId, int practiceId, Action<ReturnDto> callback)
+        {
+            FinishPracticeDto dto = new FinishPracticeDto();
+            dto.UserId = userId;
+            dto.PracticeId = practiceId;
+            byte[] data = ProtobufSerializer.Serialize(dto);
+            HttpManager.POST(baseUrl + "FinishPractice/", data, www =>
+            {
+                ReturnDto returnDto = ProtobufSerializer.Deserialize<ReturnDto>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+        /// <summary>
+        /// 获取未完成实训考核列表
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="callback"></param>
+        public static void ExaminingList(int userId, Action<ReturnDto<List<ExamineDto>>> callback)
+        {
+            HttpManager.GET(baseUrl + "ExaminingList/" + userId, www =>
+            {
+                ReturnDto<List<ExamineDto>> returnDto = ProtobufSerializer.Deserialize<ReturnDto<List<ExamineDto>>>(www.bytes);
+                if (callback != null) callback(returnDto);
+
+            });
+        }
+
+        /// <summary>
+        /// 获取已完成实训考核列表
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="callback"></param>
+        public static void ExaminedList(int userId, Action<ReturnDto<List<UserExamineDto>>> callback)
+        {
+            HttpManager.GET(baseUrl + "ExaminedList/" + userId, www =>
+            {
+                ReturnDto<List<UserExamineDto>> returnDto = ProtobufSerializer.Deserialize<ReturnDto<List<UserExamineDto>>>(www.bytes);
+                if (callback != null) callback(returnDto);
+
+            });
+        }
+
+        /// <summary>
+        /// 获取业务步骤考核点
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="examineId">考试ID</param>
+        /// <param name="callback"></param>
+        public static void GetBusinessStepPoint(int userId, int examineId, Action<ReturnDto<List<BusinessUserDto>>> callback)
+        {
+            ExamineUserIdDto dto = new ExamineUserIdDto();
+            dto.UserId = userId;
+            dto.ExamineId = examineId;
+            byte[] data = ProtobufSerializer.Serialize(dto);
+            HttpManager.POST(baseUrl + "BsnStepPoint/", data, www =>
+            {
+                ReturnDto<List<BusinessUserDto>> returnDto = ProtobufSerializer.Deserialize<ReturnDto<List<BusinessUserDto>>>(www.bytes);
+                if (callback != null) callback(returnDto);
+
+            });
+        }
+
+
+        /// <summary>
+        /// 开始考试
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="examineId">考试ID</param>
+        /// <param name="callback"></param>
+        public static void BeginExamine(int userId, int examineId, Action<ReturnDto<int>> callback)
+        {
+            ExamineUserIdDto dto = new ExamineUserIdDto();
+            dto.UserId = userId;
+            dto.ExamineId = examineId;
+            byte[] data = ProtobufSerializer.Serialize(dto);
+            HttpManager.POST(baseUrl + "BeginExamine/", data, www =>
+            {
+                ReturnDto<int> returnDto = ProtobufSerializer.Deserialize<ReturnDto<int>>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+
+        /// <summary>
+        /// 提交业务考核点
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="examineId">考核ID</param>
+        /// <param name="businessId">业务ID</param>
+        /// <param name="pointScoreList">考核点得分信息</param>
+        /// <param name="callback"></param>
+        public static void SubmitPointScore(int userId, int examineId, int businessId, List<PointScoreDto> pointScoreList, Action<ReturnDto> callback)
+        {
+            UserPointScore dto = new UserPointScore();
+            dto.UserId = userId;
+            dto.ExamineId = examineId;
+            dto.BusinessId = businessId;
+            dto.PointScoreList = pointScoreList;
+            byte[] data = ProtobufSerializer.Serialize(dto);
+            HttpManager.POST(baseUrl + "SubmitPointScore/", data, www =>
+            {
+                ReturnDto returndto = ProtobufSerializer.Deserialize<ReturnDto>(www.bytes);
+                if (callback != null) callback(returndto);
+            });
+        }
+
+
+        /// <summary>
+        /// 完成考试
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="examineId"></param>
+        /// <param name="callback"></param>
+        public static void FinishExamine(int userId, int examineId, Action<ReturnDto> callback)
+        {
+            ExamineUserIdDto dto = new ExamineUserIdDto();
+            dto.UserId = userId;
+            dto.ExamineId = examineId;
+            byte[] data = ProtobufSerializer.Serialize(dto);
+            HttpManager.POST(baseUrl + "FinishExamine/", data, www =>
+            {
+                ReturnDto returnDto = ProtobufSerializer.Deserialize<ReturnDto>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+        /// <summary>
+        /// 获取指定业务的流程步骤操作指南URL
+        /// </summary>
+        /// <param name="bsnStepId">业务步骤ID</param>
+        /// <returns>URL</returns>
+        public static string GetStepGuideURL(int bsnStepId)
+        {
+            return baseUrl + "StepGuide/" + bsnStepId; 
+        }
+
+        /// <summary>
+        /// 获取指定业务学习信息
+        /// </summary>
+        /// <param name="classId">班级id</param>
+        public static void GetBsnLearnInfo(int classId, Action<ReturnDto<List<BsnLearnDto>>> callback)
+        {
+            HttpManager.GET(baseUrl + "BsnLearn/" + classId, www =>
+            {
+                ReturnDto<List<BsnLearnDto>> returnDto = ProtobufSerializer.Deserialize<ReturnDto<List<BsnLearnDto>>>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+
+        }
+
+        /// <summary>
+        /// 获取排行榜
+        /// </summary>
+        /// <param name="classId">班级ID</param>
+        /// <param name="top">前N的排名，默认=10</param>
+        /// <param name="callback"></param>
+        public static void GetRankInClass(int classId, Action<ReturnDto<List<UserRankListDto>>> callback, int top = 10)
+        {
+            HttpManager.GET(baseUrl + "RankInClass/" + classId, www =>
+             {
+                 ReturnDto<List<UserRankListDto>> returnDto = ProtobufSerializer.Deserialize<ReturnDto<List<UserRankListDto>>>(www.bytes);
+                 if (callback != null) callback(returnDto);
+             });
+        }
+
+
+        /// <summary>
+        /// 获取考核得分明细
+        /// </summary>
+        /// <param name="userId">用户ID</param>
+        /// <param name="examineId">考核ID</param>
+        /// <param name="callback"></param>
+        public static void GetExamineScoreDetail(int userId, int examineId, Action<ReturnDto<List<UserExamineDetailDto>>> callback)
+        { 
+            ExamineUserIdDto dto = new ExamineUserIdDto();
+            dto.UserId = userId;
+            dto.ExamineId = examineId;
+            byte[] data = ProtobufSerializer.Serialize(dto);
+            HttpManager.POST(baseUrl + "ExamineScoreDetail/", data, www =>
+            {
+                ReturnDto<List<UserExamineDetailDto>> returnDto = ProtobufSerializer.Deserialize<ReturnDto<List<UserExamineDetailDto>>>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+
+        /// <summary>
+        /// 修改登录名（账号）
+        /// </summary>
+        /// <param name="accountId">账号id</param>
+        /// <param name="newAccountNo">新账号名</param>
+        /// <param name="callback"></param>
+        public static void UpdateAccount(int accountId, string newAccountNo, Action<ReturnDto> callback)
+        {
+            UpdateAccnoDto dto = new UpdateAccnoDto();
+            dto.AccountId = accountId;
+            dto.AccountNo = newAccountNo;
+            byte[] data = ProtobufSerializer.Serialize(dto);
+            HttpManager.POST(baseUrl + "UpdateAccno/", data, www =>
+            {
+                ReturnDto returnDto = ProtobufSerializer.Deserialize<ReturnDto>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+
+        /// <summary>
+        /// 获取业务角色和类型
+        /// </summary>
+        /// <param name="callback"></param>
+        public static void GetBsnRoleType(Action<ReturnDto<List<BusinessRoleDto>>> callback)
+        {
+            HttpManager.GET(baseUrl + "BsnRoleType/", www =>
+            {
+                ReturnDto<List<BusinessRoleDto>> returnDto = ProtobufSerializer.Deserialize<ReturnDto<List<BusinessRoleDto>>>(www.bytes);
+                if (callback != null) callback(returnDto);
+            });
+        }
+
+        /// <summary>
+        /// 获取网络定时检测的间隔时间
+        /// </summary>
+        /// <param name="callback"></param>
+        public static void GetNDI(Action<ReturnDto<int>> callback, Action<string> errorHandler = null)
+        {
+            HttpManager.GET(baseUrl + "NDI/", www =>
+            {
+                ReturnDto<int> returnDto = ProtobufSerializer.Deserialize<ReturnDto<int>>(www.bytes);
+                if (callback != null) callback(returnDto);
+            }, errorHandler);
+        }
+    }
+}
